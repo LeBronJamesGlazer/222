@@ -93,7 +93,7 @@ public class BenchmarkCLI {
             }
             int n = (int) size;
 
-            // --- timing start ---
+            
             long startTime = System.nanoTime();
 
             int[] arr = new int[n];
@@ -102,7 +102,7 @@ public class BenchmarkCLI {
             KadaneAlgorithm.Result r = KadaneAlgorithm.run(arr);
 
             long endTime = System.nanoTime();
-            // --- timing end ---
+            
 
             r.metrics.runTimeMs = endTime - startTime;
 
