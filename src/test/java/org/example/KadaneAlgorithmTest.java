@@ -1,105 +1,93 @@
 package org.example;
 
-import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assertions;;
+
+import java.util.function.IntSupplier;
 
 public class KadaneAlgorithmTest {
 
-    private void printMetrics(String testName, AlgorithmMetrics m) {
-        System.out.println("----------------------------------------------------");
-        System.out.println("Test: " + testName);
-        System.out.printf("Input size: %d%n", m.getInputSize());
-        System.out.printf("Comparisons: %d%n", m.getComparisons());
-        System.out.printf("Swaps: %d%n", m.getSwaps());
-        System.out.printf("Recursive calls: %d%n", m.getRecursiveCalls());
-        System.out.printf("Max depth: %d%n", m.getMaxDepth());
-        System.out.printf("Runtime: %.3f ms%n", m.getRuntimeMs());
-        System.out.printf("Memory used: %d bytes%n", m.getMemoryUsedBytes());
-        System.out.printf("GC count delta: %d%n", m.getGcCountChange());
-        System.out.println("----------------------------------------------------\n");
+    @Test
+    public void testEmpty() {
+        KadaneAlgorithm.Result r = KadaneAlgorithm.run(new int[]{});
+        Assertions.assertEquals(0, r.metrics.inputSize);
+        Assertions.assertEquals(0, r.maxSum);
+        Assertions.assertEquals(-1, r.startIndex);
     }
 
     @Test
-    public void testTypicalArray() {
-        int[] arr = {-2, -3, 4, -1, -2, 1, 5, -3};
-        AlgorithmMetrics m = new AlgorithmMetrics(arr.length);
-        KadaneAlgorithm.Result r = KadaneAlgorithm.findMaxSubarray(arr, m);
+    public void testSinglePositive() {
+        KadaneAlgorithm.Result r = KadaneAlgorithm.run(new int[]{5});
+        Assertions.assertEquals(5, r.maxSum);
+        Assertions.assertEquals(0, r.startIndex);
+        Assertions.assertEquals(0, r.endIndex);
+    }
 
-        assertEquals(7, r.maxSum);
-        assertEquals(2, r.start);
-        assertEquals(6, r.end);
-        printMetrics("Typical Array", m);
+    @Test
+    public void testSingleNegative() {
+        KadaneAlgorithm.Result r = KadaneAlgorithm.run(new int[]{-7});
+        Assertions.assertEquals(-7, r.maxSum);
+        Assertions.assertEquals(0, r.startIndex);
+        Assertions.assertEquals(0, r.endIndex);
     }
 
     @Test
     public void testAllNegative() {
-        int[] arr = {-8, -3, -6, -2, -5, -4};
-        AlgorithmMetrics m = new AlgorithmMetrics(arr.length);
-        KadaneAlgorithm.Result r = KadaneAlgorithm.findMaxSubarray(arr, m);
-
-        assertEquals(-2, r.maxSum);
-        assertEquals(3, r.start);
-        assertEquals(3, r.end);
-        printMetrics("All Negative", m);
+        int[] a = {-3, -1, -7, -4};
+        KadaneAlgorithm.Result r = KadaneAlgorithm.run(a);
+        Assertions.assertEquals(-1, r.maxSum);
+        Assertions.assertEquals(1, r.startIndex);
+        Assertions.assertEquals(1, r.endIndex);
     }
 
     @Test
-    public void testAllPositive() {
-        int[] arr = {1, 2, 3, 4};
-        AlgorithmMetrics m = new AlgorithmMetrics(arr.length);
-        KadaneAlgorithm.Result r = KadaneAlgorithm.findMaxSubarray(arr, m);
-
-        assertEquals(10, r.maxSum);
-        assertEquals(0, r.start);
-        assertEquals(3, r.end);
-        printMetrics("All Positive", m);
+    public void testMixed() {
+        int[] a = { -2, -3, 4, -1, -2, 1, 5, -3 };
+        KadaneAlgorithm.Result r = KadaneAlgorithm.run(a);
+        Assertions.assertEquals(7, r.maxSum); // 4 + -1 + -2 + 1 + 5 = 7
+        Assertions.assertEquals(2, r.startIndex);
+        Assertions.assertEquals(6, r.endIndex);
     }
 
     @Test
-    public void testSingleElement() {
-        int[] arr = {5};
-        AlgorithmMetrics m = new AlgorithmMetrics(arr.length);
-        KadaneAlgorithm.Result r = KadaneAlgorithm.findMaxSubarray(arr, m);
-
-        assertEquals(5, r.maxSum);
-        assertEquals(0, r.start);
-        assertEquals(0, r.end);
-        printMetrics("Single Element", m);
+    public void testDuplicates() {
+        int[] a = {2,2,2,2};
+        KadaneAlgorithm.Result r = KadaneAlgorithm.run(a);
+        Assertions.assertEquals(8, r.maxSum);
+        Assertions.assertEquals(0, r.startIndex);
+        Assertions.assertEquals(3, r.endIndex);
     }
 
     @Test
-    public void testEmptyArray() {
-        int[] arr = {};
-        AlgorithmMetrics m = new AlgorithmMetrics(arr.length);
-        KadaneAlgorithm.Result r = KadaneAlgorithm.findMaxSubarray(arr, m);
-
-        assertEquals(0, r.maxSum);
-        assertEquals(-1, r.start);
-        assertEquals(-1, r.end);
-        printMetrics("Empty Array", m);
+    public void testLargeValuesNoOverflow() {
+        int[] a = {Integer.MAX_VALUE, -1, Integer.MAX_VALUE};
+        KadaneAlgorithm.Result r = KadaneAlgorithm.run(a);
+        Assertions.assertEquals((long)Integer.MAX_VALUE - 1 + (long)Integer.MAX_VALUE, r.maxSum);
     }
 
     @Test
-    public void testWithDuplicates() {
-        int[] arr = {2, 2, -1, 2, 2, -1, 2};
-        AlgorithmMetrics m = new AlgorithmMetrics(arr.length);
-        KadaneAlgorithm.Result r = KadaneAlgorithm.findMaxSubarray(arr, m);
+    public void testStreamEquivalentToArray() {
+        int[] a = { -2, 1, -3, 4, -1, 2, 1, -5, 4 };
+        KadaneAlgorithm.Result r1 = KadaneAlgorithm.run(a);
 
-        assertEquals(8, r.maxSum);
-        assertEquals(0, r.start);
-        assertEquals(6, r.end);
-        printMetrics("With Duplicates", m);
-    }
+        // Implement our own IntSupplier for the stream version
+        class ArraySupplier implements IntSupplier {
+            private int idx = 0;
+            private final int[] arr;
+            ArraySupplier(int[] arr) { this.arr = arr; }
 
-    @Test
-    public void testMetricsCollected() {
-        int[] arr = {1, -2, 3, 5, -1};
-        AlgorithmMetrics m = new AlgorithmMetrics(arr.length);
-        KadaneAlgorithm.findMaxSubarray(arr, m);
+            @Override
+            public int getAsInt() {
+                if (idx >= arr.length)
+                    throw new IllegalStateException("Supplier called too many times");
+                return arr[idx++];
+            }
+        }
 
-        assertTrue(m.getComparisons() > 0);
-        assertTrue(m.getRuntimeNs() > 0);
-        assertEquals(arr.length, m.getInputSize());
-        printMetrics("Metrics Collected", m);
+        KadaneAlgorithm.Result r2 = KadaneAlgorithm.runStream(new ArraySupplier(a), a.length);
+
+        Assertions.assertEquals(r1.maxSum, r2.maxSum);
+        Assertions.assertEquals(r1.startIndex, r2.startIndex);
+        Assertions.assertEquals(r1.endIndex, r2.endIndex);
     }
 }
